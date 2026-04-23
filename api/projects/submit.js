@@ -73,17 +73,17 @@ export default async (req, res) => {
     if (dbError) throw dbError;
 
     // Trigger Klaviyo emails
-    await triggerKlaviyoEvent('Project Submitted', email, {
-      project_name,
-      category
-    });
+    // await triggerKlaviyoEvent('Project Submitted', email, {
+    //   project_name,
+    //   category
+    // });
 
     // Internal alert to The Space team
-    await triggerKlaviyoEvent(
-      'New Submission Alert',
-      'team@thespace.com', // replace with the client's team email
-      { project_name, submitted_by: name, category }
-    );
+    // await triggerKlaviyoEvent(
+    //   'New Submission Alert',
+    //   'team@thespace.com', // replace with the client's team email
+    //   { project_name, submitted_by: name, category }
+    // );
 
     return res.status(200).json({ success: true });
   } catch (error) {
