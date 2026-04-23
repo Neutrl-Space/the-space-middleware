@@ -33,16 +33,33 @@ export default async (req, res) => {
       return res.status(400).json({ error: 'Invalid category' });
     }
 
+    // Check for existing submission from this email
+    const { data: existing } = await supabase
+      .from('project_submissions')
+      .select('id')
+      .eq('email', email)
+      .eq('status', 'pending')
+      .single();
+
+    if (existing) {
+      return res.status(400).json({
+        error:
+          'You already have a pending submission. Please wait for it to be reviewed before submitting again.'
+      });
+    }
+
     // Save submission to Supabase
-    const { error: dbError } = await supabase.from('project_submissions').insert({
-      name,
-      email,
-      project_name,
-      description,
-      category,
-      image_url: image_url || null,
-      status: 'pending'
-    });
+    const { error: dbError } = await supabase
+      .from('project_submissions')
+      .insert({
+        name,
+        email: normalizedEmail,
+        project_name,
+        description,
+        category,
+        image_url: image_url || null,
+        status: 'pending'
+      });
 
     if (dbError) throw dbError;
 
