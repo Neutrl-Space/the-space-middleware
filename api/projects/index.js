@@ -28,7 +28,14 @@ export default async (req, res) => {
     // Determine if this is an admin or public request
     const isAdmin = req.headers['x-admin-secret'] === process.env.ADMIN_SECRET;
 
-    // Public requests can only ever see approved projects
+    // Public requests can only ever see approved projects.
+    // If a non-admin asks for another status, fail loudly instead of silently rewriting it.
+    if (!isAdmin && status && status !== 'approved') {
+      return res.status(403).json({
+        error: 'Admin access required to view non-approved submissions'
+      });
+    }
+
     // Admin requests can filter by any status
     const resolvedStatus = isAdmin ? status : 'approved';
 
