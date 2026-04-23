@@ -1,7 +1,7 @@
 // GET  — returns all projects
-const supabase = require('../../lib/supabase');
+import supabase from '../../lib/supabase';
 
-module.exports = async (req, res) => {
+export default async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-admin-secret');
@@ -22,6 +22,8 @@ module.exports = async (req, res) => {
       limit = 50,
       page = 1
     } = req.query;
+    const pageSize = Math.min(Number.parseInt(limit, 10) || 50, 100); // cap at 100
+    const pageNumber = Number.parseInt(page, 10) || 1;
 
     // Determine if this is an admin or public request
     const isAdmin = req.headers['x-admin-secret'] === process.env.ADMIN_SECRET;
@@ -33,7 +35,8 @@ module.exports = async (req, res) => {
     let query = supabase
       .from('project_submissions')
       .select(
-        'id, name, project_name, description, category, image_url, status, submitted_at, reviewed_at'
+        'id, name, project_name, description, category, image_url, status, submitted_at, reviewed_at',
+        { count: 'exact' }
       );
 
     // Apply status filter
@@ -59,8 +62,7 @@ module.exports = async (req, res) => {
     query = query.order(order_by, { ascending });
 
     // Apply pagination
-    const pageSize = Math.min(parseInt(limit), 100); // cap at 100
-    const offset = (parseInt(page) - 1) * pageSize;
+    const offset = (pageNumber - 1) * pageSize;
     query = query.range(offset, offset + pageSize - 1);
 
     const { data, error, count } = await query;
@@ -69,13 +71,16 @@ module.exports = async (req, res) => {
     return res.status(200).json({
       projects: data,
       pagination: {
-        page: parseInt(page),
+        page: pageNumber,
         limit: pageSize,
         total: count
       }
     });
   } catch (error) {
     console.error('Projects fetch error:', error);
-    return res.status(500).json({ error: 'Something went wrong' });
+    return res.status(500).json({
+      error: 'Something went wrong',
+      details: error?.message || 'Unknown projects fetch error'
+    });
   }
 };
