@@ -53,7 +53,7 @@ export default async (req, res) => {
       .from('project_submissions')
       .insert({
         name,
-        email: normalizedEmail,
+        email,
         project_name,
         description,
         category,
