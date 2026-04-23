@@ -35,16 +35,16 @@ export default async (req, res) => {
     }
 
     // Check for existing submission from this email
-    const { data: existing, error: lookupError } = await supabase
+    const { data: existingSubmissions, error: lookupError } = await supabase
       .from('project_submissions')
       .select('id')
       .eq('email', normalizedEmail)
       .eq('status', 'pending')
-      .maybeSingle();
+      .limit(1);
 
     if (lookupError) throw lookupError;
 
-    if (existing) {
+    if (existingSubmissions?.length > 0) {
       return res.status(400).json({
         error:
           'You already have a pending submission. Please wait for it to be reviewed before submitting again.'
