@@ -15,6 +15,7 @@ export default async (req, res) => {
   try {
     const { name, email, project_name, description, category, image_url } =
       req.body || {};
+    const normalizedEmail = email?.trim().toLowerCase();
 
     // Validate required fields
     if (!name || !email || !project_name || !category) {
@@ -34,12 +35,14 @@ export default async (req, res) => {
     }
 
     // Check for existing submission from this email
-    const { data: existing } = await supabase
+    const { data: existing, error: lookupError } = await supabase
       .from('project_submissions')
       .select('id')
-      .eq('email', email)
+      .eq('email', normalizedEmail)
       .eq('status', 'pending')
-      .single();
+      .maybeSingle();
+
+    if (lookupError) throw lookupError;
 
     if (existing) {
       return res.status(400).json({
@@ -53,7 +56,7 @@ export default async (req, res) => {
       .from('project_submissions')
       .insert({
         name,
-        email,
+        email: normalizedEmail,
         project_name,
         description,
         category,
