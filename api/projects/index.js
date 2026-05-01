@@ -39,12 +39,13 @@ export default async (req, res) => {
     // Admin requests can filter by any status
     const resolvedStatus = isAdmin ? status : 'approved';
 
+    const selectFields = isAdmin
+      ? 'id, name, email, project_name, description, category, image_url, status, submitted_at, reviewed_at'
+      : 'id, name, project_name, description, category, image_url, status, submitted_at, reviewed_at';
+
     let query = supabase
       .from('project_submissions')
-      .select(
-        'id, name, project_name, description, category, image_url, status, submitted_at, reviewed_at',
-        { count: 'exact' }
-      );
+      .select(selectFields, { count: 'exact' });
 
     // Apply status filter
     if (resolvedStatus) {
