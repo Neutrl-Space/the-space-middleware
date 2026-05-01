@@ -1,6 +1,5 @@
 // GET/POST — approve a submission
 import email from '../../lib/email';
-import shopify from '../../lib/shopify';
 import supabase from '../../lib/supabase';
 
 export default async (req, res) => {
@@ -53,34 +52,20 @@ export default async (req, res) => {
       `);
     }
 
-    await shopify.upsertApprovedProjectMetaobject({
-      ...submission,
-      link: submission.link || ''
-    });
-
     const { error: updateError } = await supabase
       .from('project_submissions')
-      .update({
-        status: 'approved',
-        reviewed_at: new Date().toISOString()
-      })
+      .update({ status: 'approved', reviewed_at: new Date().toISOString() })
       .eq('id', submissionId);
 
-    if (updateError) {
-      throw updateError;
-    }
+    if (updateError) throw updateError;
 
     try {
       await email.sendApprovedEmail(submission);
     } catch (emailError) {
       await supabase
         .from('project_submissions')
-        .update({
-          status: 'pending',
-          reviewed_at: null
-        })
+        .update({ status: 'pending', reviewed_at: null })
         .eq('id', submissionId);
-
       throw emailError;
     }
 

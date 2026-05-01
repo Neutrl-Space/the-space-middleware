@@ -1,6 +1,5 @@
 // GET/POST — reject a submission
 import email from '../../lib/email';
-import shopify from '../../lib/shopify';
 import supabase from '../../lib/supabase';
 
 export default async (req, res) => {
@@ -52,8 +51,6 @@ export default async (req, res) => {
         </div>
       `);
     }
-
-    await shopify.deleteApprovedProjectMetaobject(submissionId);
 
     const { error: updateError } = await supabase
       .from('project_submissions')
