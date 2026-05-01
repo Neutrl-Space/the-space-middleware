@@ -19,7 +19,7 @@ Use your deployed base URL:
   "project_name": "Hoppscotch Demo",
   "description": "Testing submission flow",
   "category": "other",
-  "image_url": "https://example.com/image.jpg",
+  "image_url": "https://images.unsplash.com/photo-1761839257469-96c78a7c2dd3?q=80&w=2938&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDF8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
   "link": "https://example.com"
 }
 ```
