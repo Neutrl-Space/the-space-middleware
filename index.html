@@ -117,5 +117,17 @@
         <span class="pill"><span class="dot"></span>No frontend framework required for this landing page</span>
       </div>
     </main>
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const shop = params.get('shop');
+      if (shop && !params.get('installed')) {
+        const redirectUrl = `/api/shopify/auth?${params.toString()}`;
+        try {
+          window.top.location.href = redirectUrl;
+        } catch (error) {
+          window.location.replace(redirectUrl);
+        }
+      }
+    </script>
   </body>
 </html>
