@@ -1,4 +1,6 @@
 // POST — receives form submission
+import { randomBytes } from 'crypto';
+import email from '../../lib/email';
 import supabase from '../../lib/supabase';
 
 export default async (req, res) => {
@@ -13,12 +15,19 @@ export default async (req, res) => {
   }
 
   try {
-    const { name, email, project_name, description, category, image_url } =
-      req.body || {};
-    const normalizedEmail = email?.trim().toLowerCase();
+    const {
+      name,
+      email: rawEmail,
+      project_name,
+      description,
+      category,
+      image_url,
+      link
+    } = req.body || {};
+    const normalizedEmail = rawEmail?.trim().toLowerCase();
 
     // Validate required fields
-    if (!name || !email || !project_name || !category) {
+    if (!name || !rawEmail || !project_name || !category) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
@@ -52,7 +61,8 @@ export default async (req, res) => {
     }
 
     // Save submission to Supabase
-    const { error: dbError } = await supabase
+    const approval_token = randomBytes(32).toString('hex');
+    const { data: submission, error: dbError } = await supabase
       .from('project_submissions')
       .insert({
         name,
@@ -61,10 +71,21 @@ export default async (req, res) => {
         description,
         category,
         image_url: image_url || null,
-        status: 'pending'
-      });
+        status: 'pending',
+        approval_token
+      })
+      .select('id, name, email, project_name, description, category, image_url, status, approval_token')
+      .single();
 
     if (dbError) throw dbError;
+
+    await Promise.all([
+      email.sendApprovalRequestEmail({
+        ...submission,
+        link: link || null
+      }),
+      email.sendSubmissionConfirmationEmail(submission)
+    ]);
 
     return res.status(200).json({ success: true });
   } catch (error) {

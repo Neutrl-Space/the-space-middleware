@@ -1,42 +1,83 @@
-// POST — admin rejects a submission
+// GET/POST — reject a submission
+import email from '../../lib/email';
 import supabase from '../../lib/supabase';
 
 export default async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-admin-secret');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') {
+  if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  if (req.headers['x-admin-secret'] !== process.env.ADMIN_SECRET) {
-    return res.status(401).json({ error: 'Unauthorised' });
-  }
-
   try {
-    const { id } = req.body;
-    if (!id) return res.status(400).json({ error: 'Missing submission ID' });
+    const { id, token } = req.method === 'GET' ? req.query : req.body || {};
+    const submissionId = Array.isArray(id) ? id[0] : id;
+    const approvalToken = Array.isArray(token) ? token[0] : token;
+    const isAdminRequest =
+      req.method === 'POST' &&
+      req.headers['x-admin-secret'] === process.env.ADMIN_SECRET;
 
-    const { error: fetchError } = await supabase
+    if (!submissionId) {
+      return res.status(400).send('Invalid rejection link.');
+    }
+
+    let query = supabase
       .from('project_submissions')
-      .select('id')
-      .eq('id', id)
-      .single();
+      .select('id, name, email, project_name, description, category, image_url, status, approval_token')
+      .eq('id', submissionId);
 
-    if (fetchError) throw fetchError;
+    if (!isAdminRequest) {
+      if (!approvalToken) {
+        return res.status(400).send('Invalid rejection link.');
+      }
+
+      query = query.eq('approval_token', approvalToken);
+    }
+
+    const { data: submission, error: fetchError } = await query.single();
+    if (fetchError || !submission) {
+      return res.status(404).send('Submission not found or invalid token.');
+    }
+
+    if (submission.status !== 'pending') {
+      return res.status(200).send(`
+        <div style="font-family: Arial, sans-serif; text-align: center; padding: 60px;">
+          <h2>Already Reviewed</h2>
+          <p>This submission has already been ${submission.status}.</p>
+          <p style="color: #999;">No further action is needed.</p>
+        </div>
+      `);
+    }
 
     const { error: updateError } = await supabase
       .from('project_submissions')
       .update({ status: 'rejected', reviewed_at: new Date().toISOString() })
-      .eq('id', id);
+      .eq('id', submissionId);
 
     if (updateError) throw updateError;
 
-    return res.status(200).json({ success: true });
+    try {
+      await email.sendRejectedEmail(submission);
+    } catch (emailError) {
+      await supabase
+        .from('project_submissions')
+        .update({ status: 'pending', reviewed_at: null })
+        .eq('id', submissionId);
+      throw emailError;
+    }
+
+    return res.status(200).send(`
+      <div style="font-family: Arial, sans-serif; text-align: center; padding: 60px;">
+        <h2>Rejected</h2>
+        <p><strong>${submission.project_name}</strong> has been rejected.</p>
+        <p style="color: #999;">You can close this tab.</p>
+      </div>
+    `);
   } catch (error) {
     console.error('Reject error:', error);
-    return res.status(500).json({ error: 'Something went wrong' });
+    return res.status(500).send('Something went wrong.');
   }
 };
