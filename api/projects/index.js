@@ -40,8 +40,8 @@ export default async (req, res) => {
     const resolvedStatus = isAdmin ? status : 'approved';
 
     const selectFields = isAdmin
-      ? 'id, name, email, project_name, description, category, image_url, status, submitted_at, reviewed_at'
-      : 'id, name, project_name, description, category, image_url, status, submitted_at, reviewed_at';
+      ? 'id, name, email, project_name, description, address, category, image_url, status, submitted_at, reviewed_at'
+      : 'id, name, project_name, description, address, category, image_url, status, submitted_at, reviewed_at';
 
     let query = supabase
       .from('project_submissions')

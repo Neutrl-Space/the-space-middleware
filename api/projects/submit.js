@@ -138,6 +138,7 @@ export default async (req, res) => {
       email: rawEmail,
       project_name,
       description,
+      address,
       category,
       image_url,
       link
@@ -192,12 +193,13 @@ export default async (req, res) => {
           email: normalizedEmail,
           project_name,
           description,
+          address,
           category,
           image_url: resolvedImageUrl,
           status: 'pending',
           approval_token
         })
-        .select('id, name, email, project_name, description, category, image_url, status, approval_token')
+        .select('id, name, email, project_name, description, address, category, image_url, status, approval_token')
         .single();
 
       if (dbError) throw dbError;
