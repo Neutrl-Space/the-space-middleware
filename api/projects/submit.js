@@ -6,7 +6,8 @@ import supabase from '../../lib/supabase';
 
 const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET;
 // Vercel Functions reject request bodies above ~4.5 MB before the function can process them.
-const MAX_IMAGE_FILE_SIZE = 4 * 1024 * 1024;
+// Keep the app-level image limit at 5MB so the validation message matches the intended cap.
+const MAX_IMAGE_FILE_SIZE = 5 * 1024 * 1024;
 
 export const config = {
   api: {
@@ -84,7 +85,7 @@ function parseMultipartRequest(req) {
       });
 
       file.on('limit', () => {
-        const error = new Error('Image file is too large. Max 4MB allowed.');
+        const error = new Error('Image file is too large. Max 5MB allowed.');
         error.statusCode = 413;
         reject(error);
       });
