@@ -237,7 +237,7 @@ export default async (req, res) => {
 
     // Save submission to Supabase
     const approval_token = randomBytes(32).toString('hex');
-    let submission;
+    let insertedRow;
     try {
       const { data, error: dbError } = await supabase
         .from('project_submissions')
@@ -256,7 +256,7 @@ export default async (req, res) => {
         .single();
 
       if (dbError) throw dbError;
-      submission = data;
+      insertedRow = data;
     } catch (dbError) {
       if (uploadedImage?.storage_path) {
         await supabase.storage
@@ -268,15 +268,17 @@ export default async (req, res) => {
     }
 
     try {
+      const submission = {
+        ...insertedRow,
+        link: link || null
+      };
+
       await Promise.all([
-        email.sendApprovalRequestEmail({
-          ...submission,
-          link: link || null
-        }),
+        email.sendNewSubmissionAlert(submission),
         email.sendSubmissionConfirmationEmail(submission)
       ]);
     } catch (emailError) {
-      await supabase.from('project_submissions').delete().eq('id', submission.id);
+      await supabase.from('project_submissions').delete().eq('id', insertedRow.id);
 
       if (uploadedImage?.storage_path) {
         await supabase.storage
