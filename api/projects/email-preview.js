@@ -17,7 +17,45 @@ export default async (req, res) => {
     link: 'https://example.com/project'
   };
 
-  const html = email.buildSubmissionAlertEmail(sampleSubmission);
+  const previewType = String(req.query?.type || 'all').toLowerCase();
+
+  const sections = [];
+
+  if (previewType === 'team' || previewType === 'all') {
+    sections.push(`
+      <section style="margin-bottom: 36px;">
+        <div style="margin: 0 0 12px; font-family: Arial, Helvetica, sans-serif; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: #6b6b6b;">Team alert</div>
+        ${email.buildSubmissionAlertEmail(sampleSubmission)}
+      </section>
+    `);
+  }
+
+  if (previewType === 'confirmation' || previewType === 'all') {
+    sections.push(`
+      <section style="margin-bottom: 36px;">
+        <div style="margin: 0 0 12px; font-family: Arial, Helvetica, sans-serif; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: #6b6b6b;">Confirmation</div>
+        ${email.buildSubmissionConfirmationEmailHtml(sampleSubmission)}
+      </section>
+    `);
+  }
+
+  if (previewType === 'approval' || previewType === 'all') {
+    sections.push(`
+      <section style="margin-bottom: 36px;">
+        <div style="margin: 0 0 12px; font-family: Arial, Helvetica, sans-serif; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: #6b6b6b;">Approval</div>
+        ${email.buildApprovedEmailHtml(sampleSubmission)}
+      </section>
+    `);
+  }
+
+  if (previewType === 'rejection' || previewType === 'all') {
+    sections.push(`
+      <section style="margin-bottom: 36px;">
+        <div style="margin: 0 0 12px; font-family: Arial, Helvetica, sans-serif; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: #6b6b6b;">Rejection</div>
+        ${email.buildRejectedEmailHtml(sampleSubmission)}
+      </section>
+    `);
+  }
 
   return res.status(200).send(`
     <!doctype html>
@@ -32,10 +70,34 @@ export default async (req, res) => {
             padding: 0;
             background: #f5f2ec;
           }
+          .wrap {
+            max-width: 740px;
+            margin: 0 auto;
+            padding: 28px 16px 50px;
+          }
+          .title {
+            margin: 0 0 12px;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 12px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: #6b6b6b;
+          }
+          .hero {
+            margin: 0 0 28px;
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 28px;
+            line-height: 1.1;
+            color: #111111;
+          }
         </style>
       </head>
       <body>
-        ${html}
+        <div class="wrap">
+          <div class="title">Email preview</div>
+          <h1 class="hero">The Space notification set</h1>
+          ${sections.join('')}
+        </div>
       </body>
     </html>
   `);
