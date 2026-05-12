@@ -1,5 +1,7 @@
 import email from '../../lib/email';
 
+const MONTERRAT_STACK = "'Montserrat', 'Helvetica Neue', Helvetica, Arial, sans-serif";
+
 export default async (req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
 
@@ -24,7 +26,7 @@ export default async (req, res) => {
   if (previewType === 'team' || previewType === 'all') {
     sections.push(`
       <section style="margin-bottom: 36px;">
-        <div style="margin: 0 0 12px; font-family: Arial, Helvetica, sans-serif; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: #6b6b6b;">Team alert</div>
+        <div style="margin: 0 0 12px; font-family: ${MONTERRAT_STACK}; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: #6b6b6b;">Team alert</div>
         ${email.buildSubmissionAlertEmail(sampleSubmission)}
       </section>
     `);
@@ -33,7 +35,7 @@ export default async (req, res) => {
   if (previewType === 'confirmation' || previewType === 'all') {
     sections.push(`
       <section style="margin-bottom: 36px;">
-        <div style="margin: 0 0 12px; font-family: Arial, Helvetica, sans-serif; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: #6b6b6b;">Confirmation</div>
+        <div style="margin: 0 0 12px; font-family: ${MONTERRAT_STACK}; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: #6b6b6b;">Confirmation</div>
         ${email.buildSubmissionConfirmationEmailHtml(sampleSubmission)}
       </section>
     `);
@@ -42,7 +44,7 @@ export default async (req, res) => {
   if (previewType === 'approval' || previewType === 'all') {
     sections.push(`
       <section style="margin-bottom: 36px;">
-        <div style="margin: 0 0 12px; font-family: Arial, Helvetica, sans-serif; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: #6b6b6b;">Approval</div>
+        <div style="margin: 0 0 12px; font-family: ${MONTERRAT_STACK}; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: #6b6b6b;">Approval</div>
         ${email.buildApprovedEmailHtml(sampleSubmission)}
       </section>
     `);
@@ -51,7 +53,7 @@ export default async (req, res) => {
   if (previewType === 'rejection' || previewType === 'all') {
     sections.push(`
       <section style="margin-bottom: 36px;">
-        <div style="margin: 0 0 12px; font-family: Arial, Helvetica, sans-serif; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: #6b6b6b;">Rejection</div>
+        <div style="margin: 0 0 12px; font-family: ${MONTERRAT_STACK}; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: #6b6b6b;">Rejection</div>
         ${email.buildRejectedEmailHtml(sampleSubmission)}
       </section>
     `);
@@ -64,11 +66,15 @@ export default async (req, res) => {
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>The Space Email Preview</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
         <style>
           html, body {
             margin: 0;
             padding: 0;
             background: #f5f2ec;
+            font-family: ${MONTERRAT_STACK};
           }
           .wrap {
             max-width: 740px;
@@ -77,7 +83,7 @@ export default async (req, res) => {
           }
           .title {
             margin: 0 0 12px;
-            font-family: Arial, Helvetica, sans-serif;
+            font-family: ${MONTERRAT_STACK};
             font-size: 12px;
             letter-spacing: 0.18em;
             text-transform: uppercase;
@@ -85,7 +91,7 @@ export default async (req, res) => {
           }
           .hero {
             margin: 0 0 28px;
-            font-family: Georgia, 'Times New Roman', serif;
+            font-family: ${MONTERRAT_STACK};
             font-size: 28px;
             line-height: 1.1;
             color: #111111;
