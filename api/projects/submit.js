@@ -9,6 +9,13 @@ const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET;
 // Keep the app-level image limit at 5MB so the validation message matches the intended cap.
 const MAX_IMAGE_FILE_SIZE = 5 * 1024 * 1024;
 
+function countWords(value) {
+  return String(value || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
+}
+
 export const config = {
   api: {
     bodyParser: false
@@ -198,10 +205,24 @@ export default async (req, res) => {
       link
     } = fields;
     const normalizedEmail = rawEmail?.trim().toLowerCase();
+    const resolvedImageUrl = typeof image_url === 'string' ? image_url.trim() : '';
+    const trimmedDescription = typeof description === 'string' ? description.trim() : '';
 
     // Validate required fields
     if (!name || !rawEmail || !project_name || !category) {
       return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    if (!trimmedDescription) {
+      return res.status(400).json({ error: 'Description is required' });
+    }
+
+    if (countWords(trimmedDescription) < 15) {
+      return res.status(400).json({ error: 'Description must be at least 15 words' });
+    }
+
+    if (!uploadedFile && !resolvedImageUrl) {
+      return res.status(400).json({ error: 'An image is required' });
     }
 
     // Validate category is one of the allowed values
@@ -234,7 +255,7 @@ export default async (req, res) => {
     }
 
     const uploadedImage = await uploadSubmissionImage(uploadedFile);
-    const resolvedImageUrl = uploadedImage?.image_url || image_url || null;
+    const finalImageUrl = uploadedImage?.image_url || resolvedImageUrl || null;
 
     // Save submission to Supabase
     const approval_token = randomBytes(32).toString('hex');
@@ -249,7 +270,7 @@ export default async (req, res) => {
           description,
           address,
           category,
-          image_url: resolvedImageUrl,
+          image_url: finalImageUrl,
           status: 'pending',
           approval_token
         })
