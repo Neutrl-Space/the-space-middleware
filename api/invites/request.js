@@ -29,6 +29,20 @@ function normalizeEmail(value) {
   return String(value || '').trim().toLowerCase();
 }
 
+function deriveNameFromEmail(emailAddress) {
+  const localPart = String(emailAddress || '')
+    .split('@')[0]
+    .replace(/[._-]+/g, ' ')
+    .trim();
+
+  if (!localPart) return 'there';
+
+  return localPart
+    .split(/\s+/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
 export default async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -41,12 +55,12 @@ export default async (req, res) => {
 
   try {
     const body = await parseJsonRequest(req);
-    const name = String(body.name || '').trim();
     const emailAddress = normalizeEmail(body.email);
+    const name = String(body.name || '').trim() || deriveNameFromEmail(emailAddress);
     const handle = String(body.handle || '').trim();
     const note = String(body.note || '').trim();
 
-    if (!name || !emailAddress) {
+    if (!emailAddress) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
