@@ -60,6 +60,7 @@ export default async (req, res) => {
     const name = String(body.name || '').trim() || deriveNameFromEmail(emailAddress);
     const handle = String(body.handle || '').trim();
     const note = String(body.note || '').trim();
+    const emailMarketingOptIn = body.emailMarketingOptIn === true;
 
     if (!emailAddress) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -73,7 +74,8 @@ export default async (req, res) => {
       name,
       email: emailAddress,
       handle,
-      note
+      note,
+      emailMarketingOptIn
     };
 
     const customerId = await upsertInviteCustomer(invite);
