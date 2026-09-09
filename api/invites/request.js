@@ -1,4 +1,5 @@
 import email from '../../lib/email';
+import { createInviteRequest, upsertInviteCustomer } from '../../lib/shopify';
 
 function parseJsonRequest(req) {
   return new Promise((resolve, reject) => {
@@ -74,6 +75,9 @@ export default async (req, res) => {
       handle,
       note
     };
+
+    const customerId = await upsertInviteCustomer(invite);
+    await createInviteRequest(invite, customerId);
 
     await Promise.all([
       email.sendInviteRequestAlert(invite),
