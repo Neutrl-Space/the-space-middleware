@@ -14,12 +14,14 @@ function response(){return {headers:{},setHeader(k,v){this.headers[k]=v;},status
 function database({saveError=false,updateError=false}={}) {
  const updates=[]; let saved;
  return {updates,get saved(){return saved;}, async rpc(name,args){assert.equal(name,'save_becoming_access_request');saved=args.request_data;return saveError?{error:{}}:{data:{submission_id:'submission',contact_id:'contact'}};},
-  from(table){return {update(value){return {async eq(k,id){updates.push({table,value,id});return {error:updateError?{}:null};}};}};}};
+  from(table){return {select(){return {eq(k,id){return {async single(){return {data:{id,created_at:'2026-09-20T00:00:00Z',campaign:'test',becoming_access_interests:[{product_id:P,product_handle:'real-jersey',product_title:'Real Jersey',variant_id:V,variant_title:'Medium / Blue',selected_size:'M'}]}};}};}};},update(value){return {async eq(k,id){updates.push({table,value,id});return {error:updateError?{}:null};}};}};}};
 }
 function customerGraphql({exists=true,fail=false}={}) {
  const calls=[];
  const fn=async(q,v)=>{calls.push({q,v});if(fail)throw Error('Unavailable');
  if(q.includes('AccessCollection')||q.includes('AccessSelections'))return catalog(q,v);
+ if(q.includes('AccessPreferenceSnapshot'))return {customer:{snapshot:null,summary:null}};
+ if(q.includes('SaveAccessPreferences'))return {metafieldsSet:{metafields:[],userErrors:[]}};
  if(q.includes('query AccessCustomer'))return {customers:{nodes:exists?[{id:'customer',email:'test@example.com'}]:[]}};
  const key=q.includes('CreateAccessCustomer')?'customerCreate':q.includes('UpdateAccessCustomer')?'customerUpdate':q.includes('TagAccessCustomer')?'tagsAdd':'customerEmailMarketingConsentUpdate';
  return {[key]:{customer:{id:'customer'},node:{id:'customer'},userErrors:[]}};};fn.calls=calls;return fn;
@@ -90,4 +92,11 @@ test('raw UTF-8 body supports chunk boundaries inside customer names',async()=>{
  const payload={...body(),name:'Renée'};const bytes=Buffer.from(JSON.stringify(payload));const boundary=bytes.indexOf(Buffer.from('é'))+1;
  const req=Readable.from([bytes.subarray(0,boundary),bytes.subarray(boundary)]);req.method='POST';req.headers={origin:'https://neutrlspaceny.com','content-type':'application/json'};
  const db=database(),res=response();await createBecomingAccessHandler({db,graphql:customerGraphql(),env})(req,res);assert.equal(db.saved.name,'Renée');assert.equal(res.code,200);
+});
+test('metafield failure leaves the saved submission retryable instead of synced',async()=>{
+ const db=database(),base=customerGraphql();
+ const graphql=async(q,v)=>q.includes('SaveAccessPreferences')?{metafieldsSet:{userErrors:[{code:'INVALID_TYPE'}]}}:base(q,v);
+ const {res}=await request({db,graphql});assert.equal(res.code,200);assert(res.body.success);
+ assert(db.updates.some(u=>u.value.shopify_sync_status==='failed'));
+ assert(!db.updates.some(u=>u.value.shopify_sync_status==='synced'));
 });

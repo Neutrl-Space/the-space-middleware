@@ -4,7 +4,8 @@
   "main": "index.js",
   "scripts": {
     "test": "node --test test/*.test.mjs",
-    "retry:becoming-access": "node scripts/retry-becoming-access.mjs"
+    "retry:becoming-access": "node scripts/retry-becoming-access.mjs",
+    "backfill:becoming-access-preferences": "node scripts/backfill-becoming-access-preferences.mjs"
   },
   "repository": {
     "type": "git",
