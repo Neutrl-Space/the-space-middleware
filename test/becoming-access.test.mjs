@@ -9,7 +9,7 @@ const catalog = async (query) => query.includes('AccessCollection') ? {collectio
   {id:P,title:'Real Jersey',handle:'real-jersey',inCollection:true,hasOnlyDefaultVariant:false},
   {id:V,title:'Medium / Blue',product:{id:P},selectedOptions:[{name:'Size',value:'M'}]},
 ]};
-const env={POPUP_ALLOWED_ORIGINS:'https://neutrlspaceny.com',BECOMING_ACCESS_COLLECTION_HANDLE:'soho-pop-up-september-2026'};
+const env={POPUP_ALLOWED_ORIGINS:'https://neutrlspaceny.com',BECOMING_ACCESS_COLLECTION_HANDLE:'becoming'};
 function response(){return {headers:{},setHeader(k,v){this.headers[k]=v;},status(v){this.code=v;return this;},json(v){this.body=v;return this;},end(){return this;}};}
 function database({saveError=false,updateError=false}={}) {
  const updates=[]; let saved;
