@@ -10,5 +10,5 @@ if (mode === '--check') {
   console.log(`${photos.length} photographs, ${(photos.reduce((total, photo) => total + photo.bytes, 0) / 1e6).toFixed(1)} MB. No uploads or theme changes made.`);
 } else {
   const { shopifyGraphql } = await import('../lib/shopify.js');
-  console.log(`Imported ${await importGallery({ directory: path.resolve(directory), themeDirectory: path.resolve(themeDirectory), graphql: shopifyGraphql })} photographs. Theme files are ready for review; no page or theme was published.`);
+  console.log(`Imported ${await importGallery({ directory: path.resolve(directory), themeDirectory: path.resolve(themeDirectory), graphql: shopifyGraphql, concurrency: 3 })} photographs. Theme files are ready for review; no page or theme was published.`);
 }

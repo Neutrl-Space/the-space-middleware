@@ -1,4 +1,5 @@
 node_modules
+.gallery-media/
 .env
 .docs/
 *.md

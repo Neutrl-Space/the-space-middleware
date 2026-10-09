@@ -12,6 +12,41 @@ const photo = { filename: 'becoming-night-' + 'a'.repeat(20) + '.jpg', width: 12
 const ready = { id: 'gid://shopify/MediaImage/1', fileStatus: 'READY', image: { url: 'https://cdn.shopify.com/s/files/1/files/' + photo.filename, width: 1200, height: 1600 } };
 const access = { currentAppInstallation: { accessScopes: ['read_files', 'write_files'].map((handle) => ({ handle })) } };
 
+test('parallel uploads preserve photo order, save every checkpoint and drain active work before failing', async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'becoming-pool-'));
+  const theme = path.join(directory, 'theme');
+  try {
+    await mkdir(path.join(theme, 'assets'), { recursive: true });
+    await mkdir(path.join(theme, 'templates'));
+    const photos = ['a', 'b', 'c', 'd'].map((letter) => ({ ...photo, filename: 'becoming-night-' + letter.repeat(20) + '.jpg' }));
+    await writeFile(path.join(directory, 'photos.json'), JSON.stringify({ version: 1, photos }));
+    for (const item of photos) await writeFile(path.join(directory, item.filename), bytes);
+    const manifest = path.join(theme, 'assets/becoming-gallery-data.json');
+    await writeFile(manifest, 'previous gallery');
+    await writeFile(path.join(theme, 'templates/page.becoming-gallery.json'), JSON.stringify({ sections: { main: {} } }));
+    let active = 0, peak = 0, fail = true;
+    let started = 0, release;
+    const gate = new Promise((resolve) => { release = resolve; });
+    const upload = async (item) => {
+      peak = Math.max(peak, ++active);
+      if (fail) { if (++started === 3) release(); await gate; }
+      if (fail && item.filename === photos[1].filename) { active--; throw Error('Interrupted'); }
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      active--;
+      return { ...item, id: item.filename, url: ready.image.url.replace(photo.filename, item.filename) };
+    };
+    const graphql = async (query, variables) => query.includes('GalleryFileAccess') ? access : { node: { ...ready, image: { ...ready.image, url: ready.image.url.replace(photo.filename, variables.id) } } };
+    await assert.rejects(() => importGallery({ directory, themeDirectory: theme, graphql, upload, concurrency: 3, log() {} }), /Interrupted/);
+    assert.equal(active, 0); assert.equal(peak, 3);
+    assert.equal(await readFile(manifest, 'utf8'), 'previous gallery');
+    assert.equal(Object.keys(JSON.parse(await readFile(path.join(directory, 'shopify-upload-state.json'), 'utf8')).photos).length, 2);
+    fail = false;
+    await importGallery({ directory, themeDirectory: theme, graphql, upload, concurrency: 3, log() {} });
+    assert.deepEqual(JSON.parse(await readFile(manifest, 'utf8')).photos.map((item) => item.url.split('/').pop()), photos.map((item) => item.filename));
+    assert.equal(Object.keys(JSON.parse(await readFile(path.join(directory, 'shopify-upload-state.json'), 'utf8')).photos).length, 4);
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
 test('prepared batch rejects path traversal, missing checksums, oversized originals, duplicate names and skipped files', () => {
   assert.deepEqual(validatePhotos({ version: 1, photos: [photo] }), [photo]);
   for (const update of [{ filename: '../photo.jpg' }, { width: 4000 }, { bytes: 30_000_000 }, { sha256: '' }]) assert.throws(() => validatePhotos({ version: 1, photos: [{ ...photo, ...update }] }));
