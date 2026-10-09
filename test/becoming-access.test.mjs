@@ -100,3 +100,39 @@ test('metafield failure leaves the saved submission retryable instead of synced'
  assert(db.updates.some(u=>u.value.shopify_sync_status==='failed'));
  assert(!db.updates.some(u=>u.value.shopify_sync_status==='synced'));
 });
+
+test('SMS choices require explicit boolean and an international phone; legacy requests stay valid',()=>{
+ assert.equal(validatePayload(body()).smsConsent,false);
+ assert.equal(validatePayload({...body(),smsConsent:true,phone:'+1 (212) 555-1234'}).phone,'+12125551234');
+ for(const update of [{smsConsent:'true'},{smsConsent:true,phone:''},{smsConsent:true,phone:'2125551234'}])assert.throws(()=>validatePayload({...body(),...update}));
+});
+test('access submissions retain SMS consent and server timestamp in retry payload',async()=>{
+ const db=database();const {res}=await request({db,payload:{...body(),smsConsent:true,phone:'+12125551234'}});
+ assert.equal(db.saved.syncPayload.smsConsent,true);assert.ok(db.saved.syncPayload.consentUpdatedAt);
+ assert.equal(res.body.consentSynced,false);assert(db.updates.some(u=>u.value.shopify_sync_status==='failed'));
+});
+test('successful access synchronization reports confirmed sync; failures preserve saved preferences',async()=>{
+ const {res}=await request();assert.equal(res.body.consentSynced,true);
+ const failed=await request({graphql:async(q)=>q.includes('AccessCustomer')?Promise.reject(Error('Offline')):catalog(q)});
+ assert.equal(failed.res.body.success,true);assert.equal(failed.res.body.consentSynced,false);
+});
+
+test('access SMS opt-in writes and verifies consent; unchecked requests leave SMS unchanged',async()=>{
+ const base=customerGraphql(), calls=[];
+ const graphql=async(q,v)=>{
+  calls.push({q,v});
+  if(q.includes('mutation BecomingConsentPhone'))return {customerUpdate:{customer:{id:'customer'},userErrors:[]}};
+  if(q.includes('mutation BecomingSmsConsent'))return {customerSmsMarketingConsentUpdate:{customer:{id:'customer'},userErrors:[]}};
+  if(q.includes('query VerifyBecomingSmsConsent'))return {customer:{phone:'+12125551234',smsMarketingConsent:{marketingState:'SUBSCRIBED'}}};
+  return base(q,v);
+ };
+ const {res}=await request({graphql,payload:{...body(),smsConsent:true,phone:'+12125551234'}});
+ assert.equal(res.body.consentSynced,true);
+ const mutation=calls.find(c=>c.q.includes('mutation BecomingSmsConsent'));
+ assert.equal(mutation.v.input.smsMarketingConsent.marketingState,'SUBSCRIBED');
+ assert.ok(mutation.v.input.smsMarketingConsent.consentUpdatedAt);
+ assert(calls.some(c=>c.q.includes('query VerifyBecomingSmsConsent')));
+ calls.length=0;
+ await request({graphql,payload:{...body(),smsConsent:false,phone:'+12125551234'}});
+ assert(!calls.some(c=>c.q.includes('BecomingSmsConsent')));
+});

@@ -9,6 +9,9 @@
   "functions": {
     "api/becoming-access.js": {
       "maxDuration": 60
+    },
+    "api/becoming-optin.js": {
+      "maxDuration": 60
     }
   }
 }
