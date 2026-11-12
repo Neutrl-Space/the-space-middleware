@@ -1,0 +1,40 @@
+{% comment %}
+  Custom Liquid SECTION for the Shopify welcome marketing email.
+  Keep Shopify's normal email footer, unsubscribe link, sender address and tracking settings.
+  This uses documented customer.tags support, not unsupported customer.metafields access.
+{% endcomment %}
+{% assign welcome_code = '' %}
+{% assign welcome_expiry = '' %}
+{% assign code_count = 0 %}
+{% assign expiry_count = 0 %}
+{% for tag in customer.tags %}
+  {% assign code_prefix = tag | slice: 0, 16 %}
+  {% assign expiry_prefix = tag | slice: 0, 19 %}
+  {% if code_prefix == 'ns-welcome-code:' %}
+    {% assign welcome_code = tag | remove_first: 'ns-welcome-code:' %}
+    {% assign code_count = code_count | plus: 1 %}
+  {% endif %}
+  {% if expiry_prefix == 'ns-welcome-expires:' %}
+    {% assign welcome_expiry = tag | remove_first: 'ns-welcome-expires:' %}
+    {% assign expiry_count = expiry_count | plus: 1 %}
+  {% endif %}
+{% endfor %}
+{% assign expiry_seconds = welcome_expiry | date: '%s' | plus: 0 %}
+{% assign now_seconds = 'now' | date: '%s' | plus: 0 %}
+{% assign orders_count = customer.orders_count | plus: 0 %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f0e8;color:#292c25;font-family:Arial,sans-serif;">
+  <tr><td style="padding:36px 24px;">
+    <p style="font-size:10px;letter-spacing:2px;">NEUTRL SPACE / NEW YORK</p>
+    <h1 style="font-size:30px;font-weight:400;line-height:1.2;">Your first look starts here.</h1>
+    <p style="font-size:15px;line-height:1.7;">Welcome{% if customer.first_name != blank %}, {{ customer.first_name | escape }}{% endif %}. You're on the list for new collections, restocks, and stories from NEUTRL SPACE.</p>
+    {% if customer.accepts_marketing and customer.tags contains 'ns-welcome-ready' and code_count == 1 and expiry_count == 1 and expiry_seconds > now_seconds and orders_count == 0 %}
+      <p style="font-size:15px;line-height:1.7;">A little something for your first order: 15% off with your personal welcome code.</p>
+      <p style="font-size:24px;letter-spacing:2px;word-break:break-all;">{{ welcome_code | escape }}</p>
+      <p style="font-size:12px;line-height:1.7;">Valid until {{ welcome_expiry | date: '%B %d, %Y at %H:%M %z' }}. One use, for the Shopify customer associated with your signup email. Cannot be combined with other discounts. Applies to merchandise, excluding shipping and taxes.</p>
+      <p style="margin:28px 0;"><a href="{{ shop.url | escape }}/discount/{{ welcome_code | url_encode }}?redirect=%2Fcollections%2Fall" style="display:inline-block;padding:16px 24px;background:#35432e;color:#ffffff;text-decoration:none;font-size:12px;letter-spacing:1px;">EXPLORE THE COLLECTION</a></p>
+    {% else %}
+      <p style="font-size:15px;line-height:1.7;">Discover the latest from our world.</p>
+      <p><a href="{{ shop.url | escape }}/collections/all" style="color:#35432e;">Explore the collection</a></p>
+    {% endif %}
+  </td></tr>
+</table>

@@ -7,6 +7,9 @@
     }
   ],
   "functions": {
+    "api/newsletter/process.js": {
+      "maxDuration": 60
+    },
     "api/becoming-access.js": {
       "maxDuration": 60
     },
