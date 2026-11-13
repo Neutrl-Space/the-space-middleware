@@ -22,19 +22,75 @@
 {% assign expiry_seconds = welcome_expiry | date: '%s' | plus: 0 %}
 {% assign now_seconds = 'now' | date: '%s' | plus: 0 %}
 {% assign orders_count = customer.orders_count | plus: 0 %}
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f0e8;color:#292c25;font-family:Arial,sans-serif;">
-  <tr><td style="padding:36px 24px;">
-    <p style="font-size:10px;letter-spacing:2px;">NEUTRL SPACE / NEW YORK</p>
-    <h1 style="font-size:30px;font-weight:400;line-height:1.2;">Your first look starts here.</h1>
-    <p style="font-size:15px;line-height:1.7;">Welcome{% if customer.first_name != blank %}, {{ customer.first_name | escape }}{% endif %}. You're on the list for new collections, restocks, and stories from NEUTRL SPACE.</p>
-    {% if customer.accepts_marketing and customer.tags contains 'ns-welcome-ready' and code_count == 1 and expiry_count == 1 and expiry_seconds > now_seconds and orders_count == 0 %}
-      <p style="font-size:15px;line-height:1.7;">A little something for your first order: 15% off with your personal welcome code.</p>
-      <p style="font-size:24px;letter-spacing:2px;word-break:break-all;">{{ welcome_code | escape }}</p>
-      <p style="font-size:12px;line-height:1.7;">Valid until {{ welcome_expiry | date: '%B %d, %Y at %H:%M %z' }}. One use, for the Shopify customer associated with your signup email. Cannot be combined with other discounts. Applies to merchandise, excluding shipping and taxes.</p>
-      <p style="margin:28px 0;"><a href="{{ shop.url | escape }}/discount/{{ welcome_code | url_encode }}?redirect=%2Fcollections%2Fall" style="display:inline-block;padding:16px 24px;background:#35432e;color:#ffffff;text-decoration:none;font-size:12px;letter-spacing:1px;">EXPLORE THE COLLECTION</a></p>
-    {% else %}
-      <p style="font-size:15px;line-height:1.7;">Discover the latest from our world.</p>
-      <p><a href="{{ shop.url | escape }}/collections/all" style="color:#35432e;">Explore the collection</a></p>
-    {% endif %}
+{% assign welcome_offer_available = false %}
+{% if customer.accepts_marketing and customer.tags contains 'ns-welcome-ready' and code_count == 1 and expiry_count == 1 and expiry_seconds > now_seconds and orders_count == 0 %}
+  {% assign welcome_offer_available = true %}
+{% endif %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#14120f" style="background-color:#14120f;">
+  <tr><td align="center">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background-color:#14120f;">
+      <tr><td style="padding:48px 24px 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-bottom:1px solid #3a352c;">
+          <tr><td align="center" style="padding:0 0 26px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" aria-label="NEUTRL SPACE">
+              <tr>
+                {% assign welcome_brand_letters = 'N,E,U,T,R,L, ,S,P,A,C,E' | split: ',' %}
+                {% for letter in welcome_brand_letters %}
+                  <td align="center" width="8.33%" style="font-family:'Montserrat',Helvetica,Arial,sans-serif;font-size:26px;line-height:32px;font-weight:200;color:#e9e2d4;">{% if letter == ' ' %}&nbsp;{% else %}{{ letter }}{% endif %}</td>
+                {% endfor %}
+              </tr>
+            </table>
+          </td></tr>
+        </table>
+      </td></tr>
+      <tr><td align="center" style="padding:48px 24px 36px;">
+        <p style="margin:0 0 24px;font-family:'DM Mono','Courier New',monospace;font-size:10px;line-height:18px;letter-spacing:3px;color:#aaa294;text-transform:uppercase;">A welcome / Just for you</p>
+        <h1 style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:48px;line-height:52px;font-style:italic;font-weight:300;color:#e9e2d4;">Make yourself<br>at home.</h1>
+      </td></tr>
+      <tr><td style="padding:0 24px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #3a352c;">
+          <tr><td style="padding:32px 0 0;">
+            <p style="margin:0 0 20px;font-family:'Cormorant Garamond',Georgia,serif;font-size:21px;line-height:31px;font-weight:300;color:#e9e2d4;">{% if customer.first_name != blank %}Hi {{ customer.first_name | escape }}, welcome in.{% else %}Welcome in.{% endif %}</p>
+            {% if welcome_offer_available %}
+              <p style="margin:0 0 32px;font-family:'Cormorant Garamond',Georgia,serif;font-size:21px;line-height:31px;font-weight:300;color:#c9c2b3;">A little something for your first piece. Enjoy 15% off your first order with your personal welcome code.</p>
+            {% else %}
+              <p style="margin:0 0 32px;font-family:'Cormorant Garamond',Georgia,serif;font-size:21px;line-height:31px;font-weight:300;color:#c9c2b3;">New pieces when they're ready. Stories from our world. A space to find something that feels like you.</p>
+            {% endif %}
+          </td></tr>
+        </table>
+      </td></tr>
+      {% if welcome_offer_available %}
+        <tr><td style="padding:0 24px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #3a352c;border-bottom:1px solid #3a352c;">
+            <tr><td align="center" style="padding:28px 12px;">
+              <p style="margin:0 0 16px;font-family:'DM Mono','Courier New',monospace;font-size:10px;line-height:18px;letter-spacing:3px;color:#aaa294;text-transform:uppercase;">Your personal code</p>
+              <p style="margin:0 0 16px;font-family:'DM Mono','Courier New',monospace;font-size:22px;line-height:32px;letter-spacing:2px;overflow-wrap:anywhere;word-break:break-all;color:#e9e2d4;">{{ welcome_code | escape }}</p>
+              <p style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:20px;color:#c9c2b3;">Yours until {{ welcome_expiry | date: '%B %d, %Y at %H:%M %z' }}.</p>
+            </td></tr>
+          </table>
+        </td></tr>
+      {% endif %}
+      <tr><td align="center" style="padding:36px 24px;">
+        <p style="margin:0 0 18px;font-family:'Cormorant Garamond',Georgia,serif;font-size:19px;line-height:28px;font-style:italic;color:#e9e2d4;">Find your first piece.</p>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="border:1px solid #3d5c3a;">
+          <tr><td align="center" style="padding:2px;">
+            <a href="{{ shop.url | escape }}{% if welcome_offer_available %}/discount/{{ welcome_code | url_encode }}?redirect=%2Fcollections%2Fall{% else %}/collections/all{% endif %}" style="display:inline-block;padding:20px 32px;background-color:#3d5c3a;color:#e9e2d4;text-decoration:none;font-family:'Cormorant Garamond',Georgia,serif;font-size:19px;line-height:26px;font-style:italic;letter-spacing:2px;">Enter the Space</a>
+          </td></tr>
+        </table>
+      </td></tr>
+      {% if welcome_offer_available %}
+        <tr><td style="padding:0 24px 32px;">
+          <p style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:11px;line-height:19px;color:#aaa294;">For your first order, using the email you signed up with. One use only. Cannot be combined with other discounts. Applies to merchandise; shipping and taxes are excluded. Your code is applied when you shop through the link above.</p>
+        </td></tr>
+      {% endif %}
+      <tr><td style="padding:24px;border-top:1px solid #3a352c;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="font-family:'DM Mono','Courier New',monospace;font-size:9px;line-height:18px;letter-spacing:2px;color:#aaa294;">NEUTRL SPACE</td>
+            <td align="right" style="font-family:'DM Mono','Courier New',monospace;font-size:9px;line-height:18px;letter-spacing:2px;color:#aaa294;">NEW YORK</td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
   </td></tr>
 </table>
