@@ -2,6 +2,14 @@
   "version": 2,
   "routes": [
     {
+      "src": "/api/projects/?",
+      "dest": "/api/projects/dispatch?__projectAction=index"
+    },
+    {
+      "src": "/api/projects/(approve|reject|status-changed|email-preview|index)/?",
+      "dest": "/api/projects/dispatch?__projectAction=$1"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/api/$1"
     }
