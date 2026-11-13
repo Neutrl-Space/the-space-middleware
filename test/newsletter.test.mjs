@@ -175,6 +175,19 @@ test('legacy millisecond reservations reconcile with Shopify whole-second timest
   assert.ok(f.record.tags.includes(READY_TAG));
 });
 
+test('new offers use short readable HELLO codes and retain their existing restrictions', async () => {
+  const codes = new Set();
+  for (let index = 0; index < 3; index++) {
+    const f = fixture();
+    assert.equal(await processNewsletterJob({ store: f.store, graphql: f.graphql, job: f.job, now }), 'published');
+    assert.match(f.job.code, /^HELLO-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{8}$/);
+    assert.equal(f.discount.codeDiscount.context.customers[0].id, id);
+    assert.equal(f.discount.codeDiscount.usageLimit, 1);
+    codes.add(f.job.code);
+  }
+  assert.equal(codes.size, 3);
+});
+
 test('new reservations use whole seconds and still last seven days', async () => {
   const f = fixture();
   const status = await processNewsletterJob({ store: f.store, graphql: f.graphql, job: f.job,
