@@ -163,6 +163,37 @@ test('ambiguous creation timeout reuses the persisted code and original expiry w
   assert.equal(f.creates, 1); assert.equal(f.job.code, 'NS15TEST'); assert.equal(f.job.ends_at, expiry);
 });
 
+test('legacy millisecond reservations reconcile with Shopify whole-second timestamps without replacing the offer', async () => {
+  const f = fixture({ failOnce: 'create-timeout' });
+  assert.equal(await f.run(), 'retry');
+  // Reproduce the production reservation (.308) versus Shopify's returned timestamp (.000).
+  f.job.starts_at = new Date(Date.parse(f.job.starts_at) + 308).toISOString();
+  f.job.ends_at = new Date(Date.parse(f.job.ends_at) + 308).toISOString();
+  const originalCode = f.job.code, originalExpiry = f.job.ends_at;
+  assert.equal(await f.run(), 'published');
+  assert.equal(f.creates, 1); assert.equal(f.job.code, originalCode); assert.equal(f.job.ends_at, originalExpiry);
+  assert.ok(f.record.tags.includes(READY_TAG));
+});
+
+test('new reservations use whole seconds and still last seven days', async () => {
+  const f = fixture();
+  const status = await processNewsletterJob({ store: f.store, graphql: f.graphql, job: f.job,
+    now: () => new Date('2026-11-12T12:00:00.308Z'), code: () => 'NS15TEST' });
+  assert.equal(status, 'published');
+  assert.equal(f.job.starts_at, '2026-11-12T12:00:00.000Z');
+  assert.equal(f.job.ends_at, '2026-11-19T12:00:00.000Z');
+});
+
+test('discount timestamp changes of a whole second still fail verification', async () => {
+  for (const field of ['startsAt', 'endsAt']) {
+    const f = fixture({ mutateDiscount: (node) => {
+      node.codeDiscount[field] = new Date(Date.parse(node.codeDiscount[field]) + 1000).toISOString();
+    } });
+    assert.equal(await f.run(), 'retry');
+    assert.equal(f.record.tags.includes(READY_TAG), false);
+  }
+});
+
 test('email handoff retry adds only the same tags and preserves the original offer', async () => {
   const f = fixture({ failOnce: 'handoff-timeout' });
   assert.equal(await f.run(), 'retry'); assert.ok(f.record.tags.includes(READY_TAG));
