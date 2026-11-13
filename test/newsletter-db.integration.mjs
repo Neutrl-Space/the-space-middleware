@@ -77,5 +77,43 @@ test('newsletter migration, permissions, deduplication, leases and event races i
       const row = (await db.query('select next_attempt_at > now() as waiting from newsletter_assignments where id=$1', [first.id])).rows[0];
       assert.equal(row.waiting, true); assert.equal(await claim(), null);
     });
+    await t.test('scheduler SQL creates an inactive job and queues only a scoped signature, using stubbed extensions', async () => {
+      await db.exec(`
+        create schema cron; create schema net; create schema vault; create schema extensions;
+        create table cron.job(jobid bigserial primary key, jobname text unique, schedule text, command text, active boolean default true);
+        create table vault.decrypted_secrets(name text unique, decrypted_secret text);
+        create table net.http_request_queue(id bigserial primary key, url text, headers jsonb, timeout_ms integer);
+        create table public.test_hmac_inputs(data text, key text);
+        create function cron.schedule(text,text,text) returns bigint language sql as
+          'insert into cron.job(jobname,schedule,command) values($1,$2,$3) returning jobid';
+        create function cron.alter_job(job_id bigint, active boolean default null) returns void language sql as
+          'update cron.job set active=coalesce($2,cron.job.active) where jobid=$1';
+        create function extensions.hmac(text,text,text) returns bytea language plpgsql as $stub$
+          begin insert into public.test_hmac_inputs values($1,$2); return decode(repeat('11',32),'hex'); end;
+        $stub$;
+        create function net.http_get(url text, params jsonb default '{}', headers jsonb default '{}', timeout_milliseconds integer default 1000)
+          returns bigint language sql as
+          'insert into net.http_request_queue(url,headers,timeout_ms) values($1,$3,$4) returning id';
+      `);
+      const secret = 'test-only-scheduler-key-at-least-32-characters';
+      await db.query('insert into vault.decrypted_secrets(name,decrypted_secret) values($1,$2),($3,$4)',
+        ['newsletter_middleware_url', 'https://test-only.example', 'newsletter_cron_secret', secret]);
+      const sql = await fs.readFile(new URL('../supabase/newsletter-cron.sql', import.meta.url), 'utf8');
+      await db.exec(sql);
+      const job = (await db.query('select * from cron.job')).rows[0];
+      assert.equal(job.active, false); assert.equal(job.schedule, '* * * * *');
+      assert.equal(job.command.includes(secret), false);
+      assert.equal((await db.query('select count(*)::int as count from net.http_request_queue')).rows[0].count, 0);
+      // Explicitly execute the stored command against the stubbed networking function; no HTTP is sent.
+      await db.exec(job.command);
+      const request = (await db.query('select * from net.http_request_queue')).rows[0];
+      const input = (await db.query('select * from public.test_hmac_inputs')).rows[0];
+      assert.equal(request.url, 'https://test-only.example/api/newsletter/process');
+      assert.equal(request.timeout_ms, 55000); assert.equal(JSON.stringify(request.headers).includes(secret), false);
+      assert.equal(input.data, `newsletter-worker\nGET\n/api/newsletter/process\n${request.headers['X-Newsletter-Timestamp']}`);
+      assert.equal(input.key, secret); assert.match(request.headers['X-Newsletter-Signature'], /^[a-f0-9]{64}$/);
+      await assert.rejects(db.exec(sql)); await db.exec('rollback');
+      assert.equal((await db.query('select count(*)::int as count from cron.job')).rows[0].count, 1);
+    });
   } finally { await db.close(); }
 });

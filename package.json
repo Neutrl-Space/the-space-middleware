@@ -6,6 +6,7 @@
     "test": "node --test test/*.test.mjs",
     "retry:becoming-access": "node scripts/retry-becoming-access.mjs",
     "newsletter:baseline": "node scripts/newsletter-baseline.mjs",
+    "newsletter:webhooks": "node scripts/newsletter-webhooks.mjs",
     "newsletter:retry": "node scripts/retry-newsletter.mjs",
     "backfill:becoming-access-preferences": "node scripts/backfill-becoming-access-preferences.mjs"
   },

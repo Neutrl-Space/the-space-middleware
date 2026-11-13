@@ -48,6 +48,19 @@ test('unconfirmed subscriptions do not enter the discount queue; order events re
   assert.equal(JSON.stringify(event).includes('not-stored'), false);
 });
 
+test('staged setup collects authenticated events while discount processing stays disabled', async () => {
+  const staging = { ...env, NEWSLETTER_ENABLED: 'false', NEWSLETTER_WEBHOOKS_ENABLED: 'true', CRON_SECRET: 'test-worker-secret-longer-than-32-characters' };
+  const request = signed(); let queued = 0, claims = 0;
+  const store = { async enqueue() { queued++; }, async requireReady() {}, async claim() { claims++; return null; } };
+  const receipt = response();
+  await createNewsletterWebhookHandler({ env: staging, store })(Object.assign(Readable.from([request.raw]), { method: 'POST', headers: request.headers }), receipt);
+  assert.equal(receipt.code, 200); assert.equal(queued, 1);
+  const worker = response();
+  await createNewsletterProcessHandler({ env: staging, store })({ method: 'GET', headers: { authorization: `Bearer ${staging.CRON_SECRET}` } }, worker);
+  assert.equal(worker.code, 503); assert.equal(claims, 0);
+  assert.throws(() => verifyNewsletterWebhook(request.raw, request.headers, { ...env, NEWSLETTER_WEBHOOKS_ENABLED: 'false' }));
+});
+
 test('webhook acknowledges only after persistence; storage failures request redelivery', async () => {
   let saved = 0;
   const handler = createNewsletterWebhookHandler({ env, store: { async enqueue() { saved++; } } });
@@ -245,4 +258,28 @@ test('worker HTTP endpoint requires a configured secret and authentication befor
   assert.equal(missing.code, 503); assert.equal(claims, 0);
   const valid = response(); await handler({ method: 'GET', headers: { authorization: `Bearer ${secret}` } }, valid);
   assert.equal(valid.code, 200); assert.deepEqual(valid.body, { processed: 0, retry: 0 }); assert.equal(claims, 1);
+});
+
+test('Supabase scheduler signatures are time-limited, method-bound and cannot enable paused processing', async () => {
+  const secret = 'test-only-signing-key-at-least-32-characters';
+  const epoch = 1794560000;
+  let claims = 0;
+  const store = { async requireReady() {}, async claim() { claims++; return null; } };
+  const handler = createNewsletterProcessHandler({ store, env: { ...env, CRON_SECRET: secret }, now: () => epoch * 1000 });
+  function headers(timestamp = epoch, method = 'GET') {
+    const stamp = String(timestamp);
+    return { 'x-newsletter-timestamp': stamp, 'x-newsletter-signature': crypto.createHmac('sha256', secret)
+      .update(`newsletter-worker\n${method}\n/api/newsletter/process\n${stamp}`).digest('hex') };
+  }
+  const valid = response(); await handler({ method: 'GET', headers: headers() }, valid);
+  assert.equal(valid.code, 200); assert.equal(claims, 1);
+  for (const candidate of [headers(epoch - 61), headers(epoch + 61), headers(epoch, 'POST'),
+    { ...headers(), 'x-newsletter-signature': 'x'.repeat(64) },
+    { ...headers(), 'x-newsletter-timestamp': 'invalid' }]) {
+    const res = response(); await handler({ method: 'GET', headers: candidate }, res);
+    assert.equal(res.code, 401); assert.equal(claims, 1);
+  }
+  const off = createNewsletterProcessHandler({ store, env: { ...env, NEWSLETTER_ENABLED: 'false', CRON_SECRET: secret }, now: () => epoch * 1000 });
+  const paused = response(); await off({ method: 'GET', headers: headers() }, paused);
+  assert.equal(paused.code, 503); assert.equal(claims, 1);
 });
