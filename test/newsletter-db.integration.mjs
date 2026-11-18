@@ -40,7 +40,7 @@ test('newsletter migration, permissions, deduplication, leases and event races i
       await finish(recovered, { status: 'published' }); assert.equal(await claim(), null);
     });
     await t.test('repeated signup never changes the reserved code, expiry or policy snapshot', async () => {
-      await reset(); await enqueue(event()); const job = await claim();
+      await reset(); await enqueue(event(), { ...config.rules, validityDays: 7 }); const job = await claim();
       const original = (await reserve(job)).rows[0];
       await enqueue(event('event-2'), { ...config.rules, validityDays: 90 });
       const row = (await db.query('select * from newsletter_assignments')).rows[0];
