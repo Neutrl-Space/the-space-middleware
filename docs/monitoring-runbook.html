@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NEUTRL SPACE monitoring setup — NSBP-192</title>
+<style>body{max-width:860px;margin:40px auto;padding:0 24px;font:16px/1.6 system-ui;color:#292c25}h1,h2{line-height:1.2}code,pre{background:#f3f0e8}pre{padding:16px;white-space:pre-wrap}table{border-collapse:collapse;width:100%}td,th{padding:10px;border:1px solid #ccc;text-align:left}</style></head><body>
+<h1>Monitoring and alerts</h1><p>NSBP-192 · Setup draft · November 17, 2026</p>
+<h2>What this first implementation covers</h2>
+<p>The authenticated <code>GET /api/health</code> endpoint checks read access to Becoming Access submissions, raffle storage and the connected Shopify shop. It returns HTTP 200 only when all three respond; dependency failures return 503. Empty accessible tables are healthy. This is a dependency check, not an end-to-end form submission test.</p>
+<p>Becoming Access and raffle handlers emit one <code>request_capture_failure</code> JSON event for a 5xx, an unhandled exception, or a disconnected response. A saved request with deferred Shopify sync also emits an event despite its HTTP 200 response. Logs contain only a fixed route name, reason, status and elapsed milliseconds. They exclude submitted fields, emails, headers, secrets and upstream error messages.</p>
+<h2>Tools and purpose</h2>
+<table><tr><th>Tool</th><th>Purpose</th></tr>
+<tr><td>Better Stack Uptime</td><td>Independent storefront and backend availability checks, retries, incident notifications and recovery notifications. Account setup is still required.</td></tr>
+<tr><td>Vercel runtime logs</td><td>Investigate request failure events and endpoint errors. A log event by itself does not send an alert.</td></tr>
+<tr><td>Supabase</td><td>Review saved submissions, deferred sync, newsletter queues and Cron run history. Existing database credentials stay on the server.</td></tr>
+<tr><td>Automated tests</td><td>Verify authentication, dependency failure, timeout and redaction behavior before deployment.</td></tr></table>
+<h2>1. Deploy the health check</h2>
+<ol><li>Generate a separate random monitoring secret of at least 32 characters using your password manager.</li>
+<li>Add <code>MONITORING_SECRET</code> to the intended Vercel environment. Do not reuse the Shopify, Supabase, admin or cron secret.</li>
+<li>Deploy this branch to a preview first. Verify authorized health returns 200, and no/mismatched authorization returns 401. Missing configuration returns 503.</li>
+<li>After review, merge and deploy to production. Never put the monitoring secret into a query string, theme setting, browser script, screenshot or Jira comment.</li></ol>
+<h2>2. Configure external uptime monitoring</h2>
+<p>Recommended starting cadence: every five minutes, with a confirmation retry before opening an incident. Check supported intervals and notification options in the selected plan before enabling them. Configure incident/recovery emails to the agreed recipients; the scope proposes Mudi and Michelle. Phone/SMS options and pricing require a separate choice.</p>
+<table><tr><th>Monitor</th><th>URL and check</th></tr>
+<tr><td>Homepage</td><td><code>https://neutrlspaceny.com/</code> — HTTP 200 and expected brand content.</td></tr>
+<tr><td>Product</td><td><code>https://neutrlspaceny.com/products/the-stratus-blue-shirt</code> — HTTP 200 and expected product content.</td></tr>
+<tr><td>Cart</td><td><code>https://neutrlspaceny.com/cart</code> — HTTP 200 and cart-page content.</td></tr>
+<tr><td>Request form</td><td><code>https://neutrlspaceny.com/pages/becoming-access</code> — HTTP 200 and expected form content.</td></tr>
+<tr><td>Backend dependencies</td><td><code>https://the-space-middleware.vercel.app/api/health</code> — HTTP 200 and JSON <code>status: ok</code>. Set the private HTTP header <code>Authorization: Bearer &lt;MONITORING_SECRET&gt;</code>.</td></tr></table>
+<p>Use GET, not HEAD, for the health endpoint. Do not monitor real submission routes with a recurring customer/raffle POST yet: that can pollute demand counts, issue entries or change customer data.</p>
+<h2>3. Prove notifications work</h2>
+<p>First validate a failing dependency using the automated tests. Then exercise the monitoring service's test notification and recovery workflow with agreed recipients. Do not deliberately break the storefront, revoke production credentials or flood the real form to test alerting.</p>
+<h2>Work still needed before completing NSBP-192</h2>
+<ul><li>Create and activate the external monitors and verify delivery to agreed recipients. Nothing in this branch creates an account or sends notifications.</li>
+<li>Choose a supported log-alerting/forwarding path for individual request failure events. Five-minute health checks cannot detect every transient failed POST.</li>
+<li>Add a daily synthetic submission in a dedicated test environment or isolated test campaign, including persistence verification and explicit exclusion from demand counts and customer marketing. Validate safe cleanup before enabling.</li>
+<li>Add daily read-only pre-order inventory checks: internal ship date present; every variant has tracked inventory; continue-selling off. The November 16 decision hides public ship dates, but current purchase logic still requires an internal date. Verify current business rules before changing it.</li>
+<li>Include queue/deferred-sync age checks and a scheduler heartbeat. A database responding does not prove its worker is running or its email was delivered.</li>
+<li>Record alert ownership and an incident response procedure. Review monitoring costs and account ownership before enabling paid features.</li></ul>
+<h2>Responding to incidents</h2>
+<ol><li>Identify whether a storefront page, storage probe or Shopify probe failed.</li><li>Check Vercel deployment/runtime logs and provider status pages. Use <code>request_capture_failure</code> to locate capture failures.</li><li>Check Supabase submissions before asking someone to resubmit. A deferred Shopify sync means the original request may already be saved.</li><li>Retry only the affected saved job using the relevant existing runbook; do not recreate requests or grant marketing consent.</li><li>Verify recovery, then record cause, affected time range and corrective work in Jira.</li></ol>
+<p>References: <a href="https://betterstack.com/docs/uptime/monitoring-start/">Better Stack monitoring</a> · <a href="https://vercel.com/docs/logs/runtime">Vercel runtime logs</a> · <a href="https://supabase.com/docs/guides/cron">Supabase Cron</a></p>
+</body></html>
