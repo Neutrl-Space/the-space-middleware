@@ -105,7 +105,7 @@ function fixture(options = {}) {
       const input = variables.input;
       discount = { id: 'gid://shopify/DiscountCodeNode/456', codeDiscount: {
         __typename: 'DiscountCodeBasic', title: input.title, startsAt: input.startsAt, endsAt: input.endsAt,
-        usageLimit: input.usageLimit, appliesOncePerCustomer: true, codes: { nodes: [{ code: input.code }] },
+        usageLimit: input.usageLimit, appliesOncePerCustomer: true, asyncUsageCount: 0, codes: { nodes: [{ code: input.code }] },
         combinesWith: input.combinesWith, context: { __typename: 'DiscountCustomers', customers: [{ id }] },
         customerGets: { items: { __typename: 'AllDiscountItems' }, value: { __typename: 'DiscountPercentage', percentage: 0.15 } },
       } };
@@ -139,14 +139,14 @@ function fixture(options = {}) {
   };
 }
 
-test('confirmed new subscriber gets a customer-restricted 15% code, seven-day expiry, one use and no stacking', async () => {
+test('confirmed new subscriber gets a customer-restricted 15% code, 24-hour expiry, one use and no stacking', async () => {
   const f = fixture(); assert.equal(await f.run(), 'published');
   const input = f.calls.find((call) => call.query.includes('mutation NewsletterDiscountCreate')).variables.input;
   assert.deepEqual(input.context, { customers: { add: [id] } });
   assert.equal(input.customerGets.value.percentage, 0.15); assert.deepEqual(input.customerGets.items, { all: true });
   assert.equal(input.usageLimit, 1); assert.equal(input.appliesOncePerCustomer, true);
   assert.deepEqual(input.combinesWith, { orderDiscounts: false, productDiscounts: false, shippingDiscounts: false });
-  assert.equal(Date.parse(input.endsAt) - Date.parse(input.startsAt), 7 * 86400000);
+  assert.equal(Date.parse(input.endsAt) - Date.parse(input.startsAt), 86400000);
   assert.equal(f.job.consent_at, f.record.emailMarketingConsent.consentUpdatedAt);
   assert.ok(f.record.tags.includes(READY_TAG));
   assert.ok(f.record.tags.includes(`${CODE_PREFIX}NS15TEST`));
@@ -188,13 +188,13 @@ test('new offers use short readable HELLO codes and retain their existing restri
   assert.equal(codes.size, 3);
 });
 
-test('new reservations use whole seconds and still last seven days', async () => {
+test('new reservations use whole seconds and last 24 hours', async () => {
   const f = fixture();
   const status = await processNewsletterJob({ store: f.store, graphql: f.graphql, job: f.job,
     now: () => new Date('2026-11-12T12:00:00.308Z'), code: () => 'NS15TEST' });
   assert.equal(status, 'published');
   assert.equal(f.job.starts_at, '2026-11-12T12:00:00.000Z');
-  assert.equal(f.job.ends_at, '2026-11-19T12:00:00.000Z');
+  assert.equal(f.job.ends_at, '2026-11-13T12:00:00.000Z');
 });
 
 test('discount timestamp changes of a whole second still fail verification', async () => {

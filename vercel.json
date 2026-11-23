@@ -2,6 +2,10 @@
   "version": 2,
   "routes": [
     {
+      "src": "/api/newsletter/offer/?",
+      "dest": "/api/newsletter/process?__newsletterAction=offer"
+    },
+    {
       "src": "/api/projects/?",
       "dest": "/api/projects/dispatch?__projectAction=index"
     },
