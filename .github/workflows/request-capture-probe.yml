@@ -7,6 +7,8 @@ on:
       - '.github/workflows/request-capture-probe.yml'
       - 'lib/request-capture-probe.js'
       - 'lib/probe-shopify.js'
+      - 'lib/probe-runner.js'
+      - 'lib/sentry.js'
       - 'scripts/check-request-capture.mjs'
   workflow_dispatch:
   schedule:
@@ -31,6 +33,10 @@ jobs:
       - run: npm ci
       - run: npm run monitoring:check-requests
         env:
+          SENTRY_ENABLED: 'true'
+          SENTRY_ENVIRONMENT: preview
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          PROBE_ALERT_TEST: ${{ vars.PROBE_ALERT_TEST || secrets.PROBE_ALERT_TEST || 'false' }}
           PROBE_SUPABASE_REF: ${{ vars.PROBE_SUPABASE_REF || secrets.PROBE_SUPABASE_REF }}
           PROBE_SUPABASE_SERVICE_KEY: ${{ secrets.PROBE_SUPABASE_SERVICE_KEY }}
           PROBE_SHOPIFY_SHOP: ${{ vars.PROBE_SHOPIFY_SHOP || secrets.PROBE_SHOPIFY_SHOP }}
