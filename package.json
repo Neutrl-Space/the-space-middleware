@@ -9,7 +9,8 @@
     "newsletter:webhooks": "node scripts/newsletter-webhooks.mjs",
     "newsletter:retry": "node scripts/retry-newsletter.mjs",
     "backfill:becoming-access-preferences": "node scripts/backfill-becoming-access-preferences.mjs",
-    "monitoring:test-sentry": "node scripts/test-sentry.mjs"
+    "monitoring:test-sentry": "node scripts/test-sentry.mjs",
+    "monitoring:check-requests": "node scripts/check-request-capture.mjs"
   },
   "repository": {
     "type": "git",
