@@ -132,7 +132,7 @@ test('unexposed schema stops after one marker read without calling Shopify or pu
       return new Response(JSON.stringify({ code: 'PGRST106', message: 'Schema is not exposed' }), { status: 406, headers: { 'Content-Type': 'application/json' } });
     } },
   });
-  await assert.rejects(runRequestCaptureProbe({ env, db, graphql: () => { throw new Error('Should not call Shopify'); } }), /marker/);
+  await assert.rejects(runRequestCaptureProbe({ env, db, graphql: () => { throw new Error('Should not call Shopify'); } }), /exposed schemas/);
   assert.equal(calls, 1);
 });
 
@@ -150,4 +150,17 @@ test('CLI lists missing setting names without printing existing secret values', 
     assert(result.stderr.includes(name));
   }
   assert(!result.stderr.includes('private-'));
+});
+
+test('schema diagnostics show an actionable fixed message and stop before Shopify', async () => {
+  for (const [marker, expected] of [
+    [{ status: 401, error: { message: 'private upstream content' } }, /server key/],
+    [{ status: 404, error: { code: 'PGRST205', message: 'private upstream content' } }, /marker table was not found/],
+  ]) {
+    const stages = [];
+    const db = { schema: () => ({ from: () => ({ select() { return this; }, eq() { return this; }, single: async () => marker }) }) };
+    await assert.rejects(runRequestCaptureProbe({ env, db,
+      onStage: s => stages.push(s), graphql: () => assert.fail('No Shopify request allowed') }), e => expected.test(e.message) && !e.message.includes('private'));
+    assert.deepEqual(stages, ['Supabase test schema']);
+  }
 });
