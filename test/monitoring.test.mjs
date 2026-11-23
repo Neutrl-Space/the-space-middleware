@@ -55,6 +55,41 @@ test('only GET is supported; POST cannot create a synthetic customer or entry', 
   assert.equal(res.statusCode, 405); assert.equal(res.headers.Allow, 'GET'); assert.deepEqual(f.calls, []);
 });
 
+test('preview smoke test uses the real failure wrapper without any database or Shopify calls', async () => {
+  const reports = [], sequence = [], res = response();
+  const handler = createHealthHandler({
+    db: { from() { assert.fail('Must not access customer storage'); } },
+    graphql() { assert.fail('Must not access Shopify'); },
+    env: { VERCEL_ENV: 'preview', MONITORING_SECRET: secret, SENTRY_ENABLED: 'true', SENTRY_DSN: 'configured' },
+    reporter: { capture(event) { reports.push(event); sequence.push('capture'); }, async flush() { sequence.push('flush'); } },
+  });
+  res.once('finish', () => sequence.push('response'));
+  await handler({ ...request, method: 'POST', query: { test: 'sentry' } }, res);
+  assert.equal(res.statusCode, 503);
+  assert.deepEqual(res.body, { status: 'synthetic_failure', test: true });
+  assert.deepEqual(sequence, ['capture', 'flush', 'response']);
+  assert.equal(reports.length, 1); assert.equal(reports[0].route, 'monitoring-test');
+  assert.equal(reports[0].reason, 'server_error');
+});
+
+test('smoke test cannot run in production, without authorization or without preview Sentry configuration', async () => {
+  for (const [environment, authorization, sentry, expected] of [
+    ['production', `Bearer ${secret}`, true, 405],
+    [undefined, `Bearer ${secret}`, true, 405],
+    ['preview', 'Bearer wrong', true, 401],
+    ['preview', `Bearer ${secret}`, false, 503],
+  ]) {
+    const handler = createHealthHandler({
+      db: { from() { assert.fail('No dependency reads'); } }, graphql() { assert.fail('No Shopify request'); },
+      env: { VERCEL_ENV: environment, MONITORING_SECRET: secret, SENTRY_ENABLED: String(sentry), SENTRY_DSN: 'configured' },
+      reporter: { capture() { assert.fail('Must not send event'); } },
+    });
+    const res = response();
+    await handler({ method: 'POST', query: { test: 'sentry' }, headers: { authorization } }, res);
+    assert.equal(res.statusCode, expected);
+  }
+});
+
 test('empty accessible tables and Shopify connectivity are healthy without exposing record IDs', async () => {
   const f = fixture(), res = response(); await f.handler(request, res);
   assert.equal(res.statusCode, 200);
