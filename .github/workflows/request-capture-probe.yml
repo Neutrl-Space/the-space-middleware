@@ -31,11 +31,11 @@ jobs:
       - run: npm ci
       - run: npm run monitoring:check-requests
         env:
-          PROBE_SUPABASE_REF: ${{ vars.PROBE_SUPABASE_REF }}
+          PROBE_SUPABASE_REF: ${{ vars.PROBE_SUPABASE_REF || secrets.PROBE_SUPABASE_REF }}
           PROBE_SUPABASE_SERVICE_KEY: ${{ secrets.PROBE_SUPABASE_SERVICE_KEY }}
-          PROBE_SHOPIFY_SHOP: ${{ vars.PROBE_SHOPIFY_SHOP }}
+          PROBE_SHOPIFY_SHOP: ${{ vars.PROBE_SHOPIFY_SHOP || secrets.PROBE_SHOPIFY_SHOP }}
           PROBE_SHOPIFY_CLIENT_ID: ${{ secrets.PROBE_SHOPIFY_CLIENT_ID }}
           PROBE_SHOPIFY_CLIENT_SECRET: ${{ secrets.PROBE_SHOPIFY_CLIENT_SECRET }}
-          PROBE_COLLECTION_HANDLE: ${{ vars.PROBE_COLLECTION_HANDLE }}
-          PROBE_PRODUCT_ID: ${{ vars.PROBE_PRODUCT_ID }}
-          PROBE_VARIANT_ID: ${{ vars.PROBE_VARIANT_ID }}
+          PROBE_COLLECTION_HANDLE: ${{ vars.PROBE_COLLECTION_HANDLE || secrets.PROBE_COLLECTION_HANDLE }}
+          PROBE_PRODUCT_ID: ${{ vars.PROBE_PRODUCT_ID || secrets.PROBE_PRODUCT_ID }}
+          PROBE_VARIANT_ID: ${{ vars.PROBE_VARIANT_ID || secrets.PROBE_VARIANT_ID }}
