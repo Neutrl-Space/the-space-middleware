@@ -1,6 +1,6 @@
 import { createProbeShopifyGraphql } from '../lib/probe-shopify.js';
 import { createClient } from '@supabase/supabase-js';
-import { probeConfig, runRequestCaptureProbe } from '../lib/request-capture-probe.js';
+import { ProbeConfigurationError, probeConfig, runRequestCaptureProbe } from '../lib/request-capture-probe.js';
 
 // Deliberately do not load .env: production credentials must never become defaults.
 try {
@@ -12,8 +12,10 @@ try {
   const graphql = createProbeShopifyGraphql({ shop: config.shop,
     clientId: process.env.PROBE_SHOPIFY_CLIENT_ID, clientSecret: process.env.PROBE_SHOPIFY_CLIENT_SECRET });
   console.log(JSON.stringify(await runRequestCaptureProbe({ env: process.env, db, graphql })));
-} catch {
+} catch (error) {
   // Provider responses, tokens, synthetic customer IDs and submitted fields stay out of CI logs.
-  console.error('Request capture probe failed. Check the isolated test services and configuration.');
+  console.error(error instanceof ProbeConfigurationError
+    ? error.message
+    : 'Request capture probe failed. Check the isolated test services and configuration.');
   process.exitCode = 1;
 }

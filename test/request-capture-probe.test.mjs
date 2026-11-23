@@ -135,3 +135,19 @@ test('unexposed schema stops after one marker read without calling Shopify or pu
   await assert.rejects(runRequestCaptureProbe({ env, db, graphql: () => { throw new Error('Should not call Shopify'); } }), /marker/);
   assert.equal(calls, 1);
 });
+
+test('CLI lists missing setting names without printing existing secret values', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const result = spawnSync(process.execPath, ['scripts/check-request-capture.mjs'], {
+    cwd: new URL('..', import.meta.url), encoding: 'utf8', env: {
+      PROBE_SUPABASE_SERVICE_KEY: 'private-database-value',
+      PROBE_SHOPIFY_CLIENT_ID: 'private-client-value',
+      PROBE_SHOPIFY_CLIENT_SECRET: 'private-secret-value',
+    },
+  });
+  assert.equal(result.status, 1);
+  for (const name of ['PROBE_SUPABASE_REF', 'PROBE_SHOPIFY_SHOP', 'PROBE_COLLECTION_HANDLE', 'PROBE_PRODUCT_ID', 'PROBE_VARIANT_ID']) {
+    assert(result.stderr.includes(name));
+  }
+  assert(!result.stderr.includes('private-'));
+});
