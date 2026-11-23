@@ -12,6 +12,14 @@
 <tr><td>Supabase</td><td>Review saved submissions, deferred sync, newsletter queues and Cron run history. Existing database credentials stay on the server.</td></tr>
 <tr><td>Automated tests</td><td>Verify authentication, dependency failure, timeout and redaction behavior before deployment.</td></tr></table>
 <h2>1. Deploy the health check</h2>
+<h3>Sentry error reporting first</h3>
+<p>Create a Node.js project named <code>the-space-middleware</code>. This implementation uses only error events via a dedicated manual client, with automatic integrations, tracing, profiling and SDK logs disabled. It reports the approved route, reason, status and elapsed milliseconds; raw exceptions and customer/request data are not transmitted. It captures handled 5xx responses and deferred Shopify sync as well as exceptions thrown from the wrapped Becoming Access and raffle handlers. It does not claim to capture every crash before a handler starts.</p>
+<ol><li>In Vercel → this project's Settings → Environment Variables, add <code>SENTRY_DSN</code> using Copy DSN on the Sentry setup page. Start with Preview only.</li>
+<li>Set <code>SENTRY_ENABLED=true</code> for Preview. Environment is taken from <code>VERCEL_ENV</code>, unless <code>SENTRY_ENVIRONMENT</code> overrides it.</li>
+<li>Deploy the monitoring branch as a preview. For a controlled local test, put those two variables and <code>SENTRY_ENVIRONMENT=preview</code> in this checkout's ignored <code>.env</code>, then run <code>npm run monitoring:test-sentry</code>. This emits only a synthetic event; it does not submit a form, change inventory or create a customer.</li>
+<li>Find the event in Sentry Issues under the preview environment. Test notification delivery to the agreed recipients separately; seeing an issue is not proof an email arrived.</li>
+<li>Configure production issue alerts for request-capture errors and confirm email delivery before enabling in Production. After adding production variables, redeploy. Phone or paid notification features require a separate choice.</li></ol>
+<p>The DSN belongs in server environment variables, not a committed source file. An API/auth token is not needed for this event-only integration. Error events are flushed with a bounded wait before failed JSON responses so serverless execution can finish sending them. Transport failures cannot change the form's original response.</p>
 <ol><li>Generate a separate random monitoring secret of at least 32 characters using your password manager.</li>
 <li>Add <code>MONITORING_SECRET</code> to the intended Vercel environment. Do not reuse the Shopify, Supabase, admin or cron secret.</li>
 <li>Deploy this branch to a preview first. Verify authorized health returns 200, and no/mismatched authorization returns 401. Missing configuration returns 503.</li>
