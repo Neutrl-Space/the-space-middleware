@@ -3,7 +3,8 @@
 <style>body{max-width:860px;margin:40px auto;padding:0 24px;font:16px/1.6 system-ui;color:#292c25}h1,h2{line-height:1.2}code,pre{background:#f3f0e8}pre{padding:16px;white-space:pre-wrap}table{border-collapse:collapse;width:100%}td,th{padding:10px;border:1px solid #ccc;text-align:left}</style></head><body>
 <h1>Monitoring and alerts</h1><p>NSBP-192 · Production review · November 25, 2026</p>
 <h2>What this first implementation covers</h2>
-<p><a href="monitoring-next-tasks.html">Current next tasks and ownership</a>. The preorder extension below is prepared for review; it is not active until deployed and configured.</p>
+<p><a href="monitoring-next-tasks.html">Current next tasks and ownership</a>. The owner confirmed the preorder deployment, a successful manual main run, alert setup and schedule configuration. The first scheduled run remains to be verified.</p>
+<p><a href="security-monitoring.html">Security signal coverage and rollout</a>: authentication and rate-limit signals are prepared in a follow-up change; account-side security alert setup and traffic monitoring are separate steps.</p>
 <p>The authenticated <code>GET /api/health</code> endpoint checks read access to Becoming Access submissions, raffle storage and the connected Shopify shop. It returns HTTP 200 only when all three respond; dependency failures return 503. Empty accessible tables are healthy. This is a dependency check, not an end-to-end form submission test.</p>
 <p>Becoming Access and raffle handlers emit one <code>request_capture_failure</code> JSON event for a 5xx, an unhandled exception, or a disconnected response. A saved request with deferred Shopify sync also emits an event despite its HTTP 200 response. Logs contain only a fixed route name, reason, status and elapsed milliseconds. They exclude submitted fields, emails, headers, secrets and upstream error messages.</p>
 <h2>Tools and purpose</h2>
