@@ -1,0 +1,47 @@
+name: Daily isolated request capture check
+on:
+  # Bootstrap the first check on this branch without merging into production.
+  push:
+    branches: [monitoring-and-alerts]
+    paths:
+      - '.github/workflows/request-capture-probe.yml'
+      - 'lib/request-capture-probe.js'
+      - 'lib/probe-shopify.js'
+      - 'lib/probe-runner.js'
+      - 'lib/sentry.js'
+      - 'scripts/check-request-capture.mjs'
+  workflow_dispatch:
+  schedule:
+    - cron: '17 6 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: isolated-request-capture-probe
+  cancel-in-progress: false
+jobs:
+  probe:
+    if: github.event_name != 'schedule' || vars.MONITORING_DAILY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: monitoring-test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run monitoring:check-requests
+        env:
+          SENTRY_ENABLED: 'true'
+          SENTRY_ENVIRONMENT: preview
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          PROBE_ALERT_TEST: ${{ vars.PROBE_ALERT_TEST || secrets.PROBE_ALERT_TEST || 'false' }}
+          PROBE_SUPABASE_REF: ${{ vars.PROBE_SUPABASE_REF || secrets.PROBE_SUPABASE_REF }}
+          PROBE_SUPABASE_SERVICE_KEY: ${{ secrets.PROBE_SUPABASE_SERVICE_KEY }}
+          PROBE_SHOPIFY_SHOP: ${{ vars.PROBE_SHOPIFY_SHOP || secrets.PROBE_SHOPIFY_SHOP }}
+          PROBE_SHOPIFY_CLIENT_ID: ${{ secrets.PROBE_SHOPIFY_CLIENT_ID }}
+          PROBE_SHOPIFY_CLIENT_SECRET: ${{ secrets.PROBE_SHOPIFY_CLIENT_SECRET }}
+          PROBE_COLLECTION_HANDLE: ${{ vars.PROBE_COLLECTION_HANDLE || secrets.PROBE_COLLECTION_HANDLE }}
+          PROBE_PRODUCT_ID: ${{ vars.PROBE_PRODUCT_ID || secrets.PROBE_PRODUCT_ID }}
+          PROBE_VARIANT_ID: ${{ vars.PROBE_VARIANT_ID || secrets.PROBE_VARIANT_ID }}

@@ -68,7 +68,7 @@ test('API entrypoints stay within the Vercel Hobby function limit', async () => 
     return output;
   }
   const files = await entrypoints(new URL('../api/', import.meta.url));
-  assert.equal(files.length, 10);
+  assert.equal(files.length, 11);
   assert.ok(files.length <= 12);
 });
 
