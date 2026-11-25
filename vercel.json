@@ -19,6 +19,9 @@
     }
   ],
   "functions": {
+    "api/health.js": {
+      "maxDuration": 60
+    },
     "api/newsletter/process.js": {
       "maxDuration": 60
     },
