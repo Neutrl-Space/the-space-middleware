@@ -10,6 +10,7 @@ on:
       - 'lib/probe-runner.js'
       - 'lib/sentry.js'
       - 'scripts/check-request-capture.mjs'
+      - 'scripts/send-probe-heartbeat.mjs'
   workflow_dispatch:
   schedule:
     - cron: '17 6 * * *'
@@ -45,3 +46,10 @@ jobs:
           PROBE_COLLECTION_HANDLE: ${{ vars.PROBE_COLLECTION_HANDLE || secrets.PROBE_COLLECTION_HANDLE }}
           PROBE_PRODUCT_ID: ${{ vars.PROBE_PRODUCT_ID || secrets.PROBE_PRODUCT_ID }}
           PROBE_VARIANT_ID: ${{ vars.PROBE_VARIANT_ID || secrets.PROBE_VARIANT_ID }}
+      # Default success gating skips this step if checkout, install or the probe fails.
+      - name: Confirm successful daily check to Better Stack
+        if: success() && github.ref == 'refs/heads/main'
+        run: node scripts/send-probe-heartbeat.mjs
+        env:
+          BETTERSTACK_HEARTBEAT_URL: ${{ secrets.BETTERSTACK_HEARTBEAT_URL }}
+          PROBE_ALERT_TEST: ${{ vars.PROBE_ALERT_TEST || secrets.PROBE_ALERT_TEST || 'false' }}
