@@ -37,7 +37,7 @@ test('the final filter drops raw errors, request data and arbitrary inherited sc
   assert.equal(sanitizeMonitoringEvent({ message: 'unapproved automatic error' }), null);
 });
 
-test('real SDK transport receives only the approved event, grouped by endpoint and reason', async () => {
+test('real SDK transport receives only the approved event, grouped by environment, endpoint and reason', async () => {
   const envelopes = [];
   const reporter = createSentryReporter({ env: { SENTRY_ENABLED: 'true', SENTRY_DSN: dsn, SENTRY_ENVIRONMENT: 'preview' },
     sdk: { ...Sentry, makeNodeTransport: () => ({
@@ -49,7 +49,7 @@ test('real SDK transport receives only the approved event, grouped by endpoint a
   const payloads = envelopes.flatMap(envelope => envelope[1]).filter(item => item[0].type === 'event').map(item => item[1]);
   assert.equal(payloads.length, 1);
   assert.equal(payloads[0].environment, 'preview');
-  assert.deepEqual(payloads[0].fingerprint, ['request-capture', 'becoming-access', 'server_error']);
+  assert.deepEqual(payloads[0].fingerprint, ['request-capture', 'preview', 'becoming-access', 'server_error']);
   assert.equal(JSON.stringify(payloads).includes('secret'), false);
   assert.equal(JSON.stringify(payloads).includes('private@'), false);
   assert.equal(payloads[0].request, undefined);
@@ -94,4 +94,16 @@ test('successful and rejected-validation requests do not initialize or flush Sen
     })({}, res);
     assert.deepEqual(calls, []);
   }
+});
+
+
+test('Preview failures cannot consume the production new-issue fingerprint', () => {
+  const input = { tags: { monitoring: 'request_capture', route: 'becoming-access', reason: 'server_error', status: '503' } };
+  const preview = sanitizeMonitoringEvent({ ...input, environment: 'preview' });
+  const production = sanitizeMonitoringEvent({ ...input, environment: 'production' });
+  assert.notDeepEqual(production.fingerprint, preview.fingerprint);
+  assert.deepEqual(production.fingerprint, sanitizeMonitoringEvent({ ...input, environment: 'production', release: 'a'.repeat(40) }).fingerprint);
+  const unknown = sanitizeMonitoringEvent({ ...input, environment: 'private arbitrary environment' });
+  assert.equal(unknown.environment, 'development');
+  assert(!JSON.stringify(unknown).includes('private arbitrary environment'));
 });
