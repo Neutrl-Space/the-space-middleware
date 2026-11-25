@@ -1,0 +1,26 @@
+name: Daily preorder configuration check
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '37 6 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: daily-preorder-check
+  cancel-in-progress: false
+jobs:
+  check:
+    if: github.ref == 'refs/heads/main' && (github.event_name != 'schedule' || vars.MONITORING_PREORDER_ENABLED == 'true')
+    environment: monitoring-production
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      # Built-in fetch only: no customer database or Shopify credentials in CI.
+      - name: Read preorder configuration from the authenticated middleware
+        run: node scripts/check-preorders.mjs
+        env:
+          MONITORING_SECRET: ${{ secrets.MONITORING_SECRET }}
